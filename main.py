@@ -1,7 +1,17 @@
 import logging
 import serial, time
+from enum import Enum
 
 APP_MAIN = "HM-10-terminal"
+
+class SupportedATCommands(str, Enum):
+    op_at = "AT\r\n"
+    op_help = "AT+HELP\r\n"
+
+hm10_supported_cmds = [
+    SupportedATCommands.op_at, 
+    SupportedATCommands.op_help
+    ]
 
 class HMTerminal():
     def __init__(self, port:str, baudrate:int):
@@ -24,21 +34,30 @@ class HMTerminal():
             print(f"Serial port {self.port} already opened")
 
     def test_hm10_state(self):
-        cmd = b"AT\r\n" # All AT commands must be terminated at \r\n AT will be replied with OK
+        cmd = b"AT+HELP\r\n" # All AT commands must be terminated at \r\n AT will be replied with OK
         self.serial_if.write(cmd)
+        tries = 5
         
         while True:
             data = self.serial_if.readline()
+
             if data:
                 decoded_data = data.decode('utf-8', errors="ignore")
                 print(f"Received: {decoded_data}")
 
-                if decoded_data == "OK":
-                    self.serial_if.close()
+                if "OK" in decoded_data:
                     break
             else:
                 print("No data received within timeout, trying again...")
+                tries -= 1
+
             time.sleep(0.5)
+
+            if tries <= 0:
+                break
+    
+    def get_supported_at_cmds(self):
+        pass
     
     def __del__(self):
         if self.serial_if.is_open:
