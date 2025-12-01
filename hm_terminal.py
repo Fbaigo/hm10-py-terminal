@@ -13,6 +13,7 @@ class ATCommands(str, Enum):
     op_help = "AT+HELP\r\n"
     op_imme = "AT+IMME\r\n"
     op_imme_q = "AT+IMME?\r\n"
+    op_name_q = "AT+NAME?\r\n"
 
     def opcode(self) -> bytes:
         return bytes(str.__str__(self), encoding='utf-8')
@@ -38,6 +39,24 @@ class HMTerminal(object):
             bytesize=serial.EIGHTBITS,
             timeout=1
         )
+
+        self.device_name = None
+
+    def _parse_reply(self, msg:str) -> tuple:
+        status = None
+        param = None
+
+        try:
+            status = msg.split('+')[0]
+        except:
+            pass
+
+        try:
+            param = msg.split(':')[1].replace('\r\n', '')
+        except:
+            pass
+    
+        return (status, param)
 
     def open(self) -> bool:
         """
@@ -78,22 +97,6 @@ class HMTerminal(object):
 
         return msg
     
-    def _parse_reply(self, msg:str) -> tuple:
-        status = None
-        param = None
-        
-        try:
-            status = msg.split('+')[0]
-        except:
-            pass
-
-        try:
-            param = msg.split(':')[1].replace('\r\n', '')
-        except:
-            pass
-    
-        return (status, param)
-
     def test_device(self) -> bool:
         """
             Checks if the HM device replies to AT commands properly
@@ -133,6 +136,16 @@ class HMTerminal(object):
         msg = self.send_at_command(ATCommands.op_imme_q)
         workmode = self._parse_reply(msg)
         return workmode
+    
+    def get_device_name(self):
+        msg = self.send_at_command(ATCommands.op_name_q)
+        reply = self._parse_reply(msg)
+        return reply
+
+    def hm10_configuration(self):
+        msg = self.send_at_command(f'{ATCommands.op_imme}1')
+        self.logger.info(f"AT+IMME1 reply\n{msg}")
+
     
     def __del__(self):
         if self.serial_if.is_open:
